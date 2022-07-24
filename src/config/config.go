@@ -1,4 +1,4 @@
 package config
 
-var server = "http://localhost:8080/"
-var proxyPort = 3000
+var Server = "http://localhost:8080/"
+var ProxyPort = 3000
