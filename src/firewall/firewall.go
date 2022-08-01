@@ -1,13 +1,18 @@
 package firewall
 
 import (
-	"crypto/sha256"
+
 	//	"encoding/hex"
-	//"log"
+	"log"
 	"math/rand"
 	"net/http"
 	"text/template"
+
 	//	"time"
+
+	"database/sql"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type ViewData struct {
@@ -49,28 +54,35 @@ func getUserIpAddress(r *http.Request) string {
 	return IPAddress
 }
 
-func checkUserCookieToken(token string, ip string) bool {
+func checkUserCookieToken(db *sql.DB, token string, ip string) bool {
 	if token == "" {
 		return false
 	}
 
-	if token == sha256.Sum256([]byte(ip)) {
+	var count int
+	err := db.QueryRow("SELECT count(*) as count  FROM access_tokens WHERE token = ? AND address = ?", token, ip).Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if count == 1 {
 		return true
 	}
 
-	return false
+	return true
 }
 
 func CheckConnection(w http.ResponseWriter, r *http.Request) bool {
-
+	db, _ := sql.Open("sqlite3", "./../database/database.db")
 	// Отрабатывает для пользователей прошедших авторизацию
 	tokenAccess, _ := r.Cookie("token_access")
-	if checkUserCookieToken(tokenAccess.Value, getUserIpAddress(r)) {
+	if checkUserCookieToken(db, tokenAccess.Value, getUserIpAddress(r)) {
 		return true
 	}
 
 	//queryToken := r.URL.Query().Get("fire_token")
 
-	firewallTemplate(w)
+	db.Close()
+	//firewallTemplate(w)
 	return false
 }
